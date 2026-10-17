@@ -268,12 +268,9 @@ export function useProviderChat({
       },
       [conversationId, provider],
     ),
-    onError: useCallback(
-      (err: Error) => {
-        console.error(`[${provider}] Chat error:`, err.message)
-      },
-      [provider],
-    ),
+    onError: useCallback(() => {
+      console.error(`[${provider}] Chat error`)
+    }, [provider]),
   })
 
   // Refs for stable access in timeout callbacks (avoid stale closures).
@@ -496,8 +493,8 @@ export function useProviderChat({
         // Then send via useChat (which triggers the streaming request)
         await sendMessage({ text: trimmed })
         return true
-      } catch (err) {
-        console.error(`[${provider}] Failed to send message:`, err)
+      } catch {
+        console.error(`[${provider}] Failed to send message`)
         pendingCrossFeedRef.current = {}
         return false
       }

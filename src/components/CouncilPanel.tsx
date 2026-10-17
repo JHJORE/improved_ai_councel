@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { SafeMarkdown } from '@/components/SafeMarkdown'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSettings } from '@/lib/db'
@@ -19,12 +18,11 @@ import {
 import { createModelCall, loadCatalog } from '@/lib/council/transport'
 import type { CatalogModel } from '@/lib/council/transport'
 import type { CouncilRun, Job, Step, Usage } from '@/lib/council/types'
-import { downloadJson } from '@/lib/download'
 
 function Answer({ text }: { text: string }) {
   return (
-    <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    <div className="markdown-prose max-w-none text-sm leading-relaxed break-words">
+      <SafeMarkdown>{text}</SafeMarkdown>
     </div>
   )
 }
@@ -461,12 +459,13 @@ export function CouncilPanel({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() =>
+                  onClick={async () => {
+                    const { downloadJson } = await import('@/lib/download')
                     downloadJson(
                       JSON.stringify(run, null, 2),
                       `council-${run.id}.json`,
                     )
-                  }
+                  }}
                 >
                   Export run
                 </Button>

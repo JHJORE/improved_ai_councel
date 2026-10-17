@@ -54,6 +54,7 @@ export function restoreRun(saved: CouncilRun): CouncilRun {
 }
 export class CouncilOrchestrator {
   run: CouncilRun
+  private lastEmission = 0
   private busy = false
   private pauseRequested = false
   private controller = new AbortController()
@@ -71,7 +72,9 @@ export class CouncilOrchestrator {
     this.changed = changed
     this.run = restoreRun(run)
   }
-  private emit() {
+  private emit(force = true) {
+    if (!force && Date.now() - this.lastEmission < 50) return
+    this.lastEmission = Date.now()
     this.changed(structuredClone(this.run))
   }
   private async checkpoint() {
@@ -228,7 +231,7 @@ export class CouncilOrchestrator {
                 signal: this.controller.signal,
                 onText: (text) => {
                   j.text = text
-                  this.emit()
+                  this.emit(false)
                 },
               })
               j.text = result.text

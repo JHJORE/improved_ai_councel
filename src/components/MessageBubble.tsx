@@ -9,8 +9,7 @@
  */
 
 import { memo, useCallback, useState } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { SafeMarkdown } from '@/components/SafeMarkdown'
 import { ArrowLeftRightIcon, CheckIcon, CopyIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { TokenCount } from '@/lib/db/types'
@@ -74,7 +73,7 @@ export const MessageBubble = memo(function MessageBubble({
         <p className="whitespace-pre-wrap">{content}</p>
       ) : (
         <div className="markdown-prose max-w-none text-sm">
-          <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+          <SafeMarkdown>{content}</SafeMarkdown>
           {isStreaming && (
             <span
               className="bg-foreground ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm"

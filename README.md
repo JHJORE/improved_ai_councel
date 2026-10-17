@@ -69,7 +69,7 @@ Each stage sends only its relevant context. Individual sections over 60,000 char
 
 ### Privacy and limitations
 
-Keys stay in browser settings and request headers (or the local Compare proxy request). They are never stored in Council runs, exported, or logged. `.env`, `.env.local` and other environment files are ignored. Council content goes only to OpenRouter and its model providers. Local browser data is not encrypted and clearing site data removes it; export important runs. Use the same localhost URL/port to retain access to browser storage.
+Keys stay in browser settings and request headers (or the local Compare proxy request). They are never stored in Council runs, exported, or logged. `.env`, `.env.local` and other environment files are ignored. Council content goes only to OpenRouter and its model providers. Model-provided images are displayed as text placeholders to prevent unsolicited third-party image requests. Local browser data is not encrypted and clearing site data removes it; export important runs. Use the same localhost URL/port to retain access to browser storage.
 
 Anonymous labels hide configured provider identities, and common self-identification is redacted in peer prompts. Writing style and content can still reveal authorship; anonymity is best effort. Identity redaction also affects provider names in questions about AI companies; inspect raw prompts for such questions. Prompt-injection resistance is advisory, not a security guarantee. Model rankings are opinions, not external fact verification. This release has no browsing/retrieval tools or Chairman Council.
 

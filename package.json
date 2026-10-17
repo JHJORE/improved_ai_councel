@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev:proxy": "wrangler pages dev dist",
-    "typecheck:functions": "tsc -p functions/tsconfig.json"
+    "typecheck:functions": "tsc -p functions/tsconfig.json",
+    "typecheck": "tsc -b && npm run typecheck:functions"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.107",

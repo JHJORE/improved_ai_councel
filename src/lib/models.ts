@@ -38,8 +38,8 @@ export const MODEL_OPTIONS: Record<Provider, ModelOption[]> = {
  */
 export const OPENROUTER_MODEL_MAP: Record<string, string> = {
   // Claude
-  'claude-opus-4-6': 'anthropic/claude-opus-4-6',
-  'claude-sonnet-4-6': 'anthropic/claude-sonnet-4-6',
+  'claude-opus-4-6': 'anthropic/claude-opus-4.6',
+  'claude-sonnet-4-6': 'anthropic/claude-sonnet-4.6',
 
   // OpenAI
   'gpt-5.4': 'openai/gpt-5.4',

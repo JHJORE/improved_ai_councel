@@ -1,3 +1,101 @@
+# Improved AI Council — built on Quorum
+
+A local daily interface for Claude, GPT and Gemini, with automatic deliberation alongside Quorum's original compare and manual cross-feed conversations. Based on [blockpilgrim/quorum](https://github.com/blockpilgrim/quorum), with the peer-review approach inspired by [Karpathy's LLM Council](https://github.com/karpathy/llm-council). Original Quorum source and MIT attribution are preserved.
+
+## Run locally
+
+Use Node.js 22 or newer:
+
+```bash
+git clone https://github.com/JHJORE/improved_ai_councel.git
+cd improved_ai_councel
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite (normally http://127.0.0.1:5173). No Cloudflare account or separate proxy process is needed locally. The Vite plugin executes Quorum's existing chat handler for Compare/Cross-feed. Council streams directly from OpenRouter; no remote application server is involved.
+
+Click the **gear icon → OpenRouter API Key** and enter your key. The key is saved in this browser's IndexedDB. Use **Mode → Council** to enter a question and start deliberation. Compare and Cross-feed retain Quorum's existing conversation storage, model controls, exports, and manual Cross-feed button.
+
+## Council Mode
+
+```text
+Prompt
+   │
+   ├── Claude
+   ├── GPT
+   └── Gemini
+        │
+        ▼
+ Anonymous cross-critique
+        │
+        ▼
+ Independent revision
+        │
+        ▼
+ Anonymous evaluation
+        │
+        ▼
+     Chairman
+        │
+        ▼
+   Final answer
+```
+
+1. Independent answers stream concurrently with no peer responses or conversation history included.
+2. A shuffled anonymous candidate set goes to each critic. Critiques identify insights, errors, omissions, unsupported claims and disagreements, without synthesizing yet.
+3. Each member sees its original/current answer and anonymous peer material. It revises independently, preserving better-supported disagreement rather than blindly agreeing.
+4. A fresh permutation is evaluated by all remaining members. Structured JSON is requested for catalog models advertising support. Scores and complete rankings are validated; a conservative prose fallback requires explicit scores and a complete final ranking. Invalid evaluations pause for a targeted retry. Mean ordinal rank determines aggregate order, with lower better; ties remain visibly tied (alphabetical order is display-only).
+5. The configurable chairman receives revised candidates, evaluations, rankings and earlier disagreement evidence. Earlier critique labels are translated to the evaluation mapping. The synthesis prompt prioritizes correctness, supported minority views and acknowledged uncertainty.
+
+**Council settings** above the question controls all three model IDs, the chairman, and revision rounds. Inputs offer live OpenRouter catalog suggestions and accept exact IDs. Click **Save settings**, or start a run to save them. New runs snapshot configuration; resuming a run uses its original configuration. The chairman may be one of the members or any fourth catalog model. Initial defaults are centralized in `src/lib/council/config.ts` and were checked against OpenRouter's model catalog on 2026-10-17:
+
+- Claude: `anthropic/claude-opus-4.6`
+- GPT: `openai/gpt-5.4`
+- Gemini: `google/gemini-3.1-pro-preview`
+- Chairman: `anthropic/claude-opus-4.6`
+
+Revision rounds are 0–3, default 1. Zero skips critique/revision and evaluates initial answers. Planned call counts are 7, 13, 19 and 25 respectively, before retries. Rounds never repeat indefinitely.
+
+**Pause after stage** completes the current batch and stops before the next. **Stop now** aborts active requests and retains completed peers. **Resume / retry failed** reruns only unfinished requests. Individual retry buttons retry one failure. When at least two requests succeed, **Continue with successful models** explicitly skips failed peers; fewer than two cannot proceed. Evaluation can use two successful judges for all remaining candidates. Synthesis always requires a successful chairman.
+
+Completed runs reopen from **Saved runs**, including after refresh. Intermediate stage results, anonymous mappings, raw/parsed evaluations, exact prompts and request attempts are inspectable. **Export run** downloads JSON without your API key. An interrupted page restores completed requests and lets you retry unfinished ones. Council history is separate from ordinary Quorum conversations and their exports.
+
+### Costs and context
+
+The usage panel shows tokens and USD costs by model and stage, including reported retry usage, plus total active execution time. OpenRouter-reported cost is preferred; otherwise catalog token prices provide an estimate. Missing usage is marked unknown, never treated as free. Aborted requests can still incur charges, and unknown usage cannot be reconstructed locally; OpenRouter billing is authoritative. Active time excludes paused intervals and updates at execution boundaries.
+
+Each stage sends only its relevant context. Individual sections over 60,000 characters are visibly truncated in the prompt; combined prompts over 300,000 characters are rejected before making an API call. These are character safeguards, not model-specific token guarantees. A 16,384-token output ceiling and five-minute request timeout prevent unbounded calls. Truncated/error streams never count as successful answers.
+
+### Privacy and limitations
+
+Keys stay in browser settings and request headers (or the local Compare proxy request). They are never stored in Council runs, exported, or logged. `.env`, `.env.local` and other environment files are ignored. Council content goes only to OpenRouter and its model providers. Local browser data is not encrypted and clearing site data removes it; export important runs. Use the same localhost URL/port to retain access to browser storage.
+
+Anonymous labels hide configured provider identities, and common self-identification is redacted in peer prompts. Writing style and content can still reveal authorship; anonymity is best effort. Identity redaction also affects provider names in questions about AI companies; inspect raw prompts for such questions. Prompt-injection resistance is advisory, not a security guarantee. Model rankings are opinions, not external fact verification. This release has no browsing/retrieval tools or Chairman Council.
+
+No paid live-provider calls are part of the tests. Real use requires a funded key with access to the chosen models. Catalog availability does not guarantee account/provider availability.
+
+## Architecture and tests
+
+`src/lib/council/` holds `types`, `config`, `prompts`, `anonymize`, `ranking`, `orchestrator`, `transport` and `persistence`. The framework-independent orchestrator accepts an injected streaming model caller and persistence callback, making paid API calls unnecessary in tests. `CouncilPanel.tsx` renders configuration, progress and results. Dexie schema version 2 adds Council tables without replacing existing conversations. `local-api.ts` adapts the existing Pages Function for single-command local development. The chairman is isolated as a synthesis step for future extension.
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+GitHub Actions runs lint, both TypeScript projects, the complete unit suite, production build and mocked Playwright flows. Browser tests cover all stages, inspectable intermediates, refresh persistence, targeted retry, and mobile layout. No API key or GitHub secrets are needed. `npm run preview` serves only the static build; use `npm run dev` for the complete local Compare/Cross-feed proxy, or the original Cloudflare deployment for production hosting.
+
+Possible next improvements (not implemented): evidence retrieval with citations; budget caps with preflight cost estimates; a dedicated disagreement summary linked to source responses.
+
+---
+
+## Original Quorum documentation
+
 # Quorum
 
 A tri-model AI workspace that sends your prompt to Claude, ChatGPT, and Gemini simultaneously and streams all three responses in real time.

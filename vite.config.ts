@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { localApi } from './local-api'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -7,6 +8,7 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    localApi(),
     react(),
     tailwindcss(),
     VitePWA({
@@ -77,12 +79,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8788',
-        changeOrigin: true,
-      },
-    },
-  },
+  server: { host: '127.0.0.1' },
 })

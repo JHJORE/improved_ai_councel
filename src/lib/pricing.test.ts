@@ -107,10 +107,10 @@ describe('MODEL_PRICING', () => {
 
   it('has matching pricing between direct and OpenRouter model IDs', () => {
     expect(MODEL_PRICING['claude-sonnet-4-6']).toEqual(
-      MODEL_PRICING['anthropic/claude-sonnet-4-6'],
+      MODEL_PRICING['anthropic/claude-sonnet-4.6'],
     )
     expect(MODEL_PRICING['claude-opus-4-6']).toEqual(
-      MODEL_PRICING['anthropic/claude-opus-4-6'],
+      MODEL_PRICING['anthropic/claude-opus-4.6'],
     )
     expect(MODEL_PRICING['gpt-5.2']).toEqual(
       MODEL_PRICING['openai/gpt-5.2'],

@@ -1037,3 +1037,8 @@ const openRouterModelId = toOpenRouterModelId(selectedModels[provider])
   </ScrollArea>
 </div>
 ```
+
+
+## Council stage boundaries and persistence
+
+Keep Council prompts, permutations, ranking validation and transitions in `src/lib/council/`, not React components. Each stage runs peers concurrently, checkpoints successful requests, and waits for explicit user action on failures. Retry only incomplete requests. Never persist an API key in a run or log a raw provider error. Preserve every reported attempt's usage and text. Translate critique labels through their saved mapping before synthesis uses a new anonymous permutation. Tests inject the model caller and use fake IndexedDB.

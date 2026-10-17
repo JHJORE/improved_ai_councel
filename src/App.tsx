@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { CouncilPanel } from '@/components/CouncilPanel'
 import { TopBar } from '@/components/TopBar'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { ConversationSearch } from '@/components/ConversationSearch'
@@ -40,6 +41,10 @@ import { PROVIDERS } from '@/lib/models'
 import { generateTitle } from '@/lib/utils'
 
 function App() {
+  const [mode, setMode] = useState<'compare' | 'cross-feed' | 'council'>(
+    'compare',
+  )
+  const [councilBusy, setCouncilBusy] = useState(false)
   const activeConversationId = useAppStore((s) => s.activeConversationId)
   const setActiveConversationId = useAppStore((s) => s.setActiveConversationId)
   const selectedModels = useAppStore((s) => s.selectedModels)
@@ -261,20 +266,53 @@ function App() {
           id="main-content"
           className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
-          {/* Model columns: 3-column grid on desktop, stacked on mobile.
-              animate-in with fade on conversation switch via key. */}
-          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-            <ModelColumn ref={claudeRef} provider="claude" label="Claude" />
-            <ModelColumn ref={chatgptRef} provider="chatgpt" label="ChatGPT" />
-            <ModelColumn ref={geminiRef} provider="gemini" label="Gemini" />
+          <div className="flex items-center gap-3 border-b px-4 py-2">
+            <label htmlFor="workspace-mode" className="text-sm font-medium">
+              Mode
+            </label>
+            <select
+              id="workspace-mode"
+              className="bg-background rounded border px-3 py-1 text-sm"
+              value={mode}
+              disabled={isAnyStreaming || councilBusy}
+              onChange={(e) => setMode(e.target.value as typeof mode)}
+            >
+              <option value="compare">Compare</option>
+              <option value="cross-feed">Cross-feed</option>
+              <option value="council">Council</option>
+            </select>
+            <span className="text-muted-foreground text-xs">
+              {mode === 'council'
+                ? 'Automatic deliberation'
+                : mode === 'cross-feed'
+                  ? 'Use Cross-feed below to share the latest answers manually'
+                  : 'Three independent conversations'}
+            </span>
           </div>
+          {mode === 'council' ? (
+            <CouncilPanel onBusyChange={setCouncilBusy} />
+          ) : (
+            <>
+              {/* Model columns: 3-column grid on desktop, stacked on mobile.
+              animate-in with fade on conversation switch via key. */}
+              <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+                <ModelColumn ref={claudeRef} provider="claude" label="Claude" />
+                <ModelColumn
+                  ref={chatgptRef}
+                  provider="chatgpt"
+                  label="ChatGPT"
+                />
+                <ModelColumn ref={geminiRef} provider="gemini" label="Gemini" />
+              </div>
 
-          <InputBar
-            onSend={handleSend}
-            onCrossFeed={handleCrossFeed}
-            isStreaming={isAnyStreaming}
-            hasCrossFeedContent={hasCrossFeedContent}
-          />
+              <InputBar
+                onSend={handleSend}
+                onCrossFeed={handleCrossFeed}
+                isStreaming={isAnyStreaming}
+                hasCrossFeedContent={hasCrossFeedContent}
+              />
+            </>
+          )}
         </main>
       </div>
 

@@ -5,6 +5,7 @@
  */
 
 import Dexie, { type Table } from 'dexie'
+import type { CouncilRun, CouncilConfig } from '@/lib/council/types'
 
 import type { Conversation, Message, Settings } from '@/lib/db/types'
 
@@ -12,6 +13,9 @@ class QuorumDatabase extends Dexie {
   conversations!: Table<Conversation, number>
   messages!: Table<Message, number>
   settings!: Table<Settings, number>
+
+  councilRuns!: Table<CouncilRun, string>
+  councilPreferences!: Table<{ id: string; config: CouncilConfig }, string>
 
   constructor() {
     super('quorum')
@@ -27,6 +31,10 @@ class QuorumDatabase extends Dexie {
 
       // Fixed id (not auto-increment) — singleton record with id=1
       settings: 'id',
+    })
+    this.version(2).stores({
+      councilRuns: 'id, createdAt',
+      councilPreferences: 'id',
     })
   }
 }

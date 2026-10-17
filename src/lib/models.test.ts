@@ -154,10 +154,10 @@ describe('getModelDisplayName', () => {
 describe('toOpenRouterModelId', () => {
   it('maps Claude model IDs to OpenRouter format', () => {
     expect(toOpenRouterModelId('claude-sonnet-4-6')).toBe(
-      'anthropic/claude-sonnet-4-6',
+      'anthropic/claude-sonnet-4.6',
     )
     expect(toOpenRouterModelId('claude-opus-4-6')).toBe(
-      'anthropic/claude-opus-4-6',
+      'anthropic/claude-opus-4.6',
     )
   })
 

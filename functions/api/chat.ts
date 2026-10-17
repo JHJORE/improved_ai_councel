@@ -465,7 +465,10 @@ export const onRequestPost: PagesFunction = async (context) => {
       messages,
       maxOutputTokens: MAX_OUTPUT_TOKENS[provider],
       providerOptions: PROVIDER_OPTIONS[provider],
-      abortSignal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      abortSignal: AbortSignal.any([
+        context.request.signal,
+        AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      ]),
     })
 
     // Return the stream as a UI message stream response (compatible with useChat).
@@ -476,7 +479,7 @@ export const onRequestPost: PagesFunction = async (context) => {
     const streamResponse = result.toUIMessageStreamResponse({
       sendReasoning: true,
       onError: (err) => {
-        console.error(`[proxy] ${provider} stream error:`, err)
+        console.error(`[proxy] ${provider} stream error`)
         const { body } = mapError(err, provider)
         return body.error.message
       },
@@ -497,7 +500,7 @@ export const onRequestPost: PagesFunction = async (context) => {
     // long reasoning phases, then add CORS headers.
     return corsResponse(withKeepAlive(streamResponse))
   } catch (err) {
-    console.error(`[proxy] ${provider} caught error:`, err)
+    console.error(`[proxy] ${provider} request failed`)
     const { status, body: errorBody } = mapError(err, provider)
     return errorResponse(status, errorBody)
   }

@@ -73,6 +73,8 @@ async function setup(page: Page, failOnce = false) {
     },
   )
   await page.goto('/')
+  const sidebarClose = page.getByRole('button', { name: 'Close', exact: true })
+  if (await sidebarClose.isVisible()) await sidebarClose.click()
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page
     .getByLabel('OpenRouter API Key', { exact: true })

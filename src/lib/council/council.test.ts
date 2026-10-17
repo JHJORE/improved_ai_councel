@@ -1,5 +1,9 @@
 import 'fake-indexeddb/auto'
-import { anonymize, redactIdentity } from '@/lib/council/anonymize'
+import {
+  anonymize,
+  redactIdentity,
+  remapReferences,
+} from '@/lib/council/anonymize'
 import { parseEvaluation, aggregateRanking } from '@/lib/council/ranking'
 import {
   buildSynthesisPrompt,
@@ -322,4 +326,33 @@ describe('prompts and persistence', () => {
     await saveConfig(c)
     expect(await loadConfig()).toEqual(c)
   })
+})
+
+it('translates earlier critique references into the final mapping', () => {
+  expect(
+    remapReferences(
+      'Response A challenges Response B and Response C.',
+      { A: 'first', B: 'second', C: 'third' },
+      { A: 'second', B: 'first' },
+    ),
+  ).toBe(
+    'Response B challenges Response A and [earlier candidate excluded from final evaluation].',
+  )
+})
+it('preserves reported usage and raw text from failed evaluation attempts', async () => {
+  let bad = true
+  const e = engine(async (r) =>
+    r.evaluationIds && bad
+      ? { text: 'malformed', usage: { input: 1, output: 2, cost: 0.3 } }
+      : successful(r),
+  )
+  await e.execute()
+  bad = false
+  await e.execute()
+  const job = e.run.steps.find((s) => s.stage === 'evaluation')!.jobs[0]
+  expect(job.history).toHaveLength(2)
+  expect(job.history![0].text).toBe('malformed')
+  expect(
+    job.history!.reduce((s, a) => s + (a.usage?.cost ?? 0), 0),
+  ).toBeCloseTo(0.31)
 })

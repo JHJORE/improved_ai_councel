@@ -34,11 +34,16 @@ export function localApi(): Plugin {
           })
           const response: Response = await module.onRequestPost({ request })
           res.writeHead(response.status, Object.fromEntries(response.headers))
-          if (response.body)
-            Readable.fromWeb(
+          if (response.body) {
+            const stream = Readable.fromWeb(
               response.body as Parameters<typeof Readable.fromWeb>[0],
-            ).pipe(res)
-          else res.end()
+            )
+            stream.on('error', () => {
+              controller.abort()
+              if (!res.writableEnded) res.end()
+            })
+            stream.pipe(res)
+          } else res.end()
         } catch {
           if (!res.headersSent) res.statusCode = 500
           res.end('Local proxy request failed.')

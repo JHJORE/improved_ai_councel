@@ -8,9 +8,10 @@
  * Dialog state is managed locally -- no need for global state.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { EyeIcon, EyeOffIcon, SettingsIcon } from 'lucide-react'
+import { CouncilSettings } from '@/components/CouncilSettings'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -46,8 +47,7 @@ export function SettingsDialog() {
   const settings = useLiveQuery(() => db.settings.get(1), [])
 
   // Check if this is first run (no OpenRouter API key configured)
-  const hasApiKey =
-    settings != null && settings.apiKeys.openrouter !== ''
+  const hasApiKey = settings != null && settings.apiKeys.openrouter !== ''
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -83,17 +83,16 @@ export function SettingsDialog() {
 
         <div className="flex flex-col gap-6 pt-2">
           {/* OpenRouter API key (single key for all providers) */}
-          <OpenRouterKeySection
-            apiKey={settings?.apiKeys.openrouter ?? ''}
-          />
+          <OpenRouterKeySection apiKey={settings?.apiKeys.openrouter ?? ''} />
 
+          <CouncilSettings />
           {/* Separator */}
           <div className="border-border border-t" />
 
           {/* Per-provider model selectors */}
           <div className="flex flex-col gap-4">
             <span className="text-foreground text-sm font-medium">
-              Models
+              Compare / Cross-feed models
             </span>
             {PROVIDERS.map((provider) => (
               <ProviderModelSection
@@ -120,33 +119,20 @@ interface OpenRouterKeySectionProps {
 function OpenRouterKeySection({ apiKey }: OpenRouterKeySectionProps) {
   const [showKey, setShowKey] = useState(false)
 
-  // Local state for the API key input (instant visual feedback).
-  // Debounce the Dexie write to avoid a transaction per keystroke.
-  const [localKey, setLocalKey] = useState(apiKey)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Sync from parent when Dexie value changes externally
-  useEffect(() => {
-    setLocalKey(apiKey)
-  }, [apiKey])
-
+  const [localKey, setLocalKey] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState('')
   const handleApiKeyChange = (value: string) => {
     setLocalKey(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      updateSettings({ apiKeys: { openrouter: value } })
-    }, 300)
+    setSaveError('')
+    // Enqueue the write immediately; closing the dialog cannot cancel it.
+    void updateSettings({ apiKeys: { openrouter: value.trim() } }).catch(() =>
+      setSaveError('Could not save your key. Please try again.'),
+    )
   }
-
-  // Clean up debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
 
   return (
     <div className="flex flex-col gap-1.5">
+      {saveError && <p role="alert">{saveError}</p>}
       <label
         htmlFor="openrouter-api-key"
         className="text-foreground text-sm font-medium"
@@ -157,7 +143,7 @@ function OpenRouterKeySection({ apiKey }: OpenRouterKeySectionProps) {
         <Input
           id="openrouter-api-key"
           type={showKey ? 'text' : 'password'}
-          value={localKey}
+          value={localKey ?? apiKey}
           onChange={(e) => handleApiKeyChange(e.target.value)}
           placeholder="sk-or-..."
           className="pr-9"

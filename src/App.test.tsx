@@ -61,9 +61,15 @@ afterAll(async () => {
   await deleteDatabase()
 })
 
+vi.mock('@/lib/council/transport', () => ({
+  loadCatalog: vi.fn().mockResolvedValue([]),
+  createModelCall: vi.fn(),
+}))
+
 describe('App', () => {
-  it('renders the main layout elements', () => {
+  it('renders the main layout elements', async () => {
     render(<App />)
+    await userEvent.selectOptions(screen.getByLabelText('Mode'), 'compare')
     expect(screen.getByText('Quorum')).toBeInTheDocument()
     expect(screen.getByLabelText('Claude conversation')).toBeInTheDocument()
     expect(screen.getByLabelText('ChatGPT conversation')).toBeInTheDocument()
@@ -83,6 +89,7 @@ describe('Tri-model dispatch (Phase 6)', () => {
     await updateSettings({ apiKeys: { openrouter: 'sk-test' } })
     const user = userEvent.setup()
     render(<App />)
+    await userEvent.selectOptions(screen.getByLabelText('Mode'), 'compare')
 
     // Wait for InputBar to become enabled (useLiveQuery needs to resolve)
     const input = await waitFor(() => {

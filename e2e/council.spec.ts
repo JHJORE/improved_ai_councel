@@ -79,30 +79,12 @@ async function setup(page: Page, failOnce = false) {
   await page
     .getByLabel('OpenRouter API Key', { exact: true })
     .fill('mock-key-not-a-secret')
-  // Key saving is intentionally debounced by upstream Quorum.
-  await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        return new Promise<boolean>((resolve) => {
-          const r = indexedDB.open('quorum')
-          r.onsuccess = () => {
-            const db = r.result
-            const q = db.transaction('settings').objectStore('settings').get(1)
-            q.onsuccess = () => {
-              resolve(q.result?.apiKeys.openrouter === 'mock-key-not-a-secret')
-              db.close()
-            }
-          }
-        })
-      }),
-    )
-    .toBe(true)
   await page.keyboard.press('Escape')
-  await page.getByLabel('Mode', { exact: true }).selectOption('council')
+  await expect(page.getByLabel('Mode', { exact: true })).toHaveValue('council')
   await page
-    .getByLabel('Your question', { exact: true })
+    .getByLabel('Message', { exact: true })
     .fill('How should we evaluate an uncertain claim?')
-  await page.getByRole('button', { name: 'Start Council', exact: true }).click()
+  await page.getByLabel('Message', { exact: true }).press('Enter')
   return stages
 }
 test('full council flow, inspectable stages, usage and reload persistence', async ({
@@ -133,6 +115,9 @@ test('full council flow, inspectable stages, usage and reload persistence', asyn
     'evaluation',
     'synthesis',
   ])
+  await page
+    .getByText('Inspect answers, rankings and usage', { exact: true })
+    .click()
   for (const title of [
     'Revised answers',
     'Rankings',
@@ -152,7 +137,7 @@ test('full council flow, inspectable stages, usage and reload persistence', asyn
     }),
   ).toHaveCount(3)
   await page.reload()
-  await page.getByLabel('Mode', { exact: true }).selectOption('council')
+  await expect(page.getByLabel('Mode', { exact: true })).toHaveValue('council')
   await expect(
     page.getByRole('heading', { name: 'Final answer', exact: true }),
   ).toBeVisible()
@@ -190,4 +175,51 @@ test('mobile council layout remains within viewport', async ({ page }) => {
     path: 'test-results/council-mobile.png',
     fullPage: true,
   })
+})
+
+test('follow-ups retain context and New conversation starts fresh', async ({
+  page,
+}) => {
+  const prompts: string[] = []
+  page.on('request', (request) => {
+    if (request.url().endsWith('/chat/completions'))
+      prompts.push(request.postDataJSON().messages[0].content)
+  })
+  const stages = await setup(page)
+  await expect(
+    page.getByRole('heading', { name: 'Final answer', exact: true }),
+  ).toBeVisible()
+  await page
+    .getByLabel('Message', { exact: true })
+    .fill('Which assumption matters most?')
+  await page.getByLabel('Message', { exact: true }).press('Enter')
+  await expect.poll(() => stages.length).toBe(26)
+  await expect(
+    page.getByRole('button', { name: 'Send', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    page.getByText(
+      'A polished final answer preserving important uncertainty.',
+      { exact: true },
+    ),
+  ).toHaveCount(2)
+  expect(prompts[13]).toContain('How should we evaluate an uncertain claim?')
+  expect(prompts[13]).toContain(
+    'A polished final answer preserving important uncertainty.',
+  )
+  await expect(
+    page.getByRole('button', { name: 'New conversation', exact: true }),
+  ).toBeEnabled()
+  await page
+    .getByRole('button', { name: 'New conversation', exact: true })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: 'Final answer', exact: true }),
+  ).toHaveCount(0)
+  await page
+    .getByLabel('Message', { exact: true })
+    .fill('A completely separate question')
+  await page.getByLabel('Message', { exact: true }).press('Enter')
+  await expect.poll(() => stages.length).toBe(39)
+  expect(prompts[26]).not.toContain('PRIOR CONVERSATION')
 })

@@ -68,6 +68,7 @@ export interface Step {
 export interface CouncilRun {
   id: string
   createdAt: string
+  conversationContext?: { question: string; answer: string }[]
   originalPrompt: string
   config: CouncilConfig
   steps: Step[]

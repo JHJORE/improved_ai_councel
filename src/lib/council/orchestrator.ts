@@ -101,7 +101,15 @@ export class CouncilOrchestrator {
   }
   private prepare(step: Step) {
     if (step.jobs.length) return
-    const { config, originalPrompt: q, steps } = this.run
+    const { config, originalPrompt, steps } = this.run
+    const q =
+      originalPrompt +
+      (this.run.conversationContext?.length
+        ? '\n\nPRIOR CONVERSATION (context for this follow-up)\n' +
+          this.run.conversationContext
+            .map((t) => `User: ${t.question}\nAssistant: ${t.answer}`)
+            .join('\n\n')
+        : '')
     const current = this.candidates()
     const preceding = steps[this.run.cursor - 1]
     const members =

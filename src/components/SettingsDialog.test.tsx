@@ -1,3 +1,6 @@
+vi.mock('@/lib/council/transport', () => ({
+  loadCatalog: vi.fn().mockResolvedValue([]),
+}))
 /**
  * Component tests for SettingsDialog.
  *
@@ -117,7 +120,9 @@ describe('SettingsDialog', () => {
     it('shows Models section header', async () => {
       await openDialog()
 
-      expect(screen.getByText('Models')).toBeInTheDocument()
+      expect(
+        screen.getByText('Compare / Cross-feed models'),
+      ).toBeInTheDocument()
     })
 
     it('API key input defaults to password type (masked)', async () => {
@@ -313,5 +318,19 @@ describe('SettingsDialog', () => {
         expect(button.className).not.toContain('animate-pulse')
       })
     })
+  })
+})
+
+it('persists a pasted key even when settings immediately unmounts', async () => {
+  const view = render(<SettingsDialog />)
+  await userEvent.click(screen.getByRole('button', { name: 'Settings' }))
+  fireEvent.change(screen.getByLabelText('OpenRouter API Key'), {
+    target: { value: 'sk-or-immediate-save-test' },
+  })
+  view.unmount()
+  await waitFor(async () => {
+    expect((await db.settings.get(1))?.apiKeys.openrouter).toBe(
+      'sk-or-immediate-save-test',
+    )
   })
 })

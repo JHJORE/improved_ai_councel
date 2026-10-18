@@ -15,7 +15,7 @@ npm run dev
 
 Open the local URL printed by Vite (normally http://127.0.0.1:5173). No Cloudflare account or separate proxy process is needed locally. The Vite plugin executes Quorum's existing chat handler for Compare/Cross-feed. Council streams directly from OpenRouter; no remote application server is involved.
 
-Click the **gear icon → OpenRouter API Key** and enter your key. The key is saved in this browser's IndexedDB. Use **Mode → Council** to enter a question and start deliberation. Compare and Cross-feed retain Quorum's existing conversation storage, model controls, exports, and manual Cross-feed button.
+Click the **gear icon → OpenRouter API Key** and enter your key. The key is saved in this browser's IndexedDB. Chat opens by default. Type a question and press **Enter** (or **Send**) to get the final answer automatically. Use Shift+Enter for a new line. Follow-up messages include your previous questions and answers; **New conversation** starts fresh. Compare and Cross-feed retain Quorum's existing conversation storage, model controls, exports, and manual Cross-feed button.
 
 ## Council Mode
 
@@ -48,7 +48,7 @@ Prompt
 4. A fresh permutation is evaluated by all remaining members. Structured JSON is requested for catalog models advertising support. Scores and complete rankings are validated; a conservative prose fallback requires explicit scores and a complete final ranking. Invalid evaluations pause for a targeted retry. Mean ordinal rank determines aggregate order, with lower better; ties remain visibly tied (alphabetical order is display-only).
 5. The configurable chairman receives revised candidates, evaluations, rankings and earlier disagreement evidence. Earlier critique labels are translated to the evaluation mapping. The synthesis prompt prioritizes correctness, supported minority views and acknowledged uncertainty.
 
-**Council settings** above the question controls all three model IDs, the chairman, and revision rounds. Inputs offer live OpenRouter catalog suggestions and accept exact IDs. Click **Save settings**, or start a run to save them. New runs snapshot configuration; resuming a run uses its original configuration. The chairman may be one of the members or any fourth catalog model. Initial defaults are centralized in `src/lib/council/config.ts` and were checked against OpenRouter's model catalog on 2026-10-17:
+**Council settings** inside the gear menu controls all three model IDs, the chairman, and revision rounds. Inputs offer live OpenRouter catalog suggestions and accept exact IDs. Changes save automatically. New runs snapshot configuration; resuming a run uses its original configuration. The chairman may be one of the members or any fourth catalog model. Initial defaults are centralized in `src/lib/council/config.ts` and were checked against OpenRouter's model catalog on 2026-10-17:
 
 - Claude: `anthropic/claude-opus-4.6`
 - GPT: `openai/gpt-5.4`
@@ -59,7 +59,7 @@ Revision rounds are 0–3, default 1. Zero skips critique/revision and evaluates
 
 **Pause after stage** completes the current batch and stops before the next. **Stop now** aborts active requests and retains completed peers. **Resume / retry failed** reruns only unfinished requests. Individual retry buttons retry one failure. When at least two requests succeed, **Continue with successful models** explicitly skips failed peers; fewer than two cannot proceed. Evaluation can use two successful judges for all remaining candidates. Synthesis always requires a successful chairman.
 
-Completed runs reopen from **Saved runs**, including after refresh. Intermediate stage results, anonymous mappings, raw/parsed evaluations, exact prompts and request attempts are inspectable. **Export run** downloads JSON without your API key. An interrupted page restores completed requests and lets you retry unfinished ones. Council history is separate from ordinary Quorum conversations and their exports.
+Completed runs reopen from **Chat history**, including after refresh. Intermediate stage results, anonymous mappings, raw/parsed evaluations, exact prompts and request attempts are inspectable. **Export run** downloads JSON without your API key. An interrupted page restores completed requests and lets you retry unfinished ones. Council history is separate from ordinary Quorum conversations and their exports.
 
 ### Costs and context
 
@@ -77,7 +77,7 @@ No paid live-provider calls are part of the tests. Real use requires a funded ke
 
 ## Architecture and tests
 
-`src/lib/council/` holds `types`, `config`, `prompts`, `anonymize`, `ranking`, `orchestrator`, `transport` and `persistence`. The framework-independent orchestrator accepts an injected streaming model caller and persistence callback, making paid API calls unnecessary in tests. `CouncilPanel.tsx` renders configuration, progress and results. Dexie schema version 2 adds Council tables without replacing existing conversations. `local-api.ts` adapts the existing Pages Function for single-command local development. The chairman is isolated as a synthesis step for future extension.
+`src/lib/council/` holds `types`, `config`, `prompts`, `anonymize`, `ranking`, `orchestrator`, `transport` and `persistence`. The framework-independent orchestrator accepts an injected streaming model caller and persistence callback, making paid API calls unnecessary in tests. `CouncilPanel.tsx` renders chat, progress and results; `CouncilSettings.tsx` provides optional configuration in Settings. Dexie schema version 2 adds Council tables without replacing existing conversations. `local-api.ts` adapts the existing Pages Function for single-command local development. The chairman is isolated as a synthesis step for future extension.
 
 ```bash
 npm run lint

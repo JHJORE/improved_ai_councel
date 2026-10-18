@@ -42,8 +42,9 @@ import { generateTitle } from '@/lib/utils'
 
 function App() {
   const [mode, setMode] = useState<'compare' | 'cross-feed' | 'council'>(
-    'compare',
+    'council',
   )
+  const [councilSession, setCouncilSession] = useState(0)
   const [councilBusy, setCouncilBusy] = useState(false)
   const activeConversationId = useAppStore((s) => s.activeConversationId)
   const setActiveConversationId = useAppStore((s) => s.setActiveConversationId)
@@ -97,8 +98,10 @@ function App() {
   const geminiRef = useRef<ModelColumnHandle>(null)
 
   const handleNewConversation = useCallback(() => {
+    if (councilBusy) return
     setActiveConversationId(null)
-  }, [setActiveConversationId])
+    setCouncilSession((n) => n + 1)
+  }, [setActiveConversationId, councilBusy])
 
   const handleSearchOpen = useCallback(() => {
     setSearchOpen(true)
@@ -254,12 +257,16 @@ function App() {
       </a>
 
       <TopBar
+        compareTools={mode !== 'council'}
+        busy={councilBusy}
         onNewConversation={handleNewConversation}
         onSearchOpen={handleSearchOpen}
       />
 
       <div className="flex min-h-0 flex-1">
-        <ConversationSidebar onNewConversation={handleNewConversation} />
+        {mode !== 'council' && (
+          <ConversationSidebar onNewConversation={handleNewConversation} />
+        )}
 
         {/* Main content area */}
         <main
@@ -290,7 +297,11 @@ function App() {
             </span>
           </div>
           {mode === 'council' ? (
-            <CouncilPanel onBusyChange={setCouncilBusy} />
+            <CouncilPanel
+              key={councilSession}
+              startEmpty={councilSession > 0}
+              onBusyChange={setCouncilBusy}
+            />
           ) : (
             <>
               {/* Model columns: 3-column grid on desktop, stacked on mobile.

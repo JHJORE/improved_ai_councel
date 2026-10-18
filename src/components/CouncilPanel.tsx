@@ -1,20 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { SafeMarkdown } from '@/components/SafeMarkdown'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { getSettings } from '@/lib/db'
 import {
   CouncilOrchestrator,
   createRun,
   restoreRun,
 } from '@/lib/council/orchestrator'
-import { DEFAULT_COUNCIL_CONFIG, callCount } from '@/lib/council/config'
-import {
-  loadConfig,
-  loadRuns,
-  saveConfig,
-  saveRun,
-} from '@/lib/council/persistence'
+import { loadConfig, loadRuns, saveRun } from '@/lib/council/persistence'
 import { createModelCall, loadCatalog } from '@/lib/council/transport'
 import type { CatalogModel } from '@/lib/council/transport'
 import type { CouncilRun, Job, Step, Usage } from '@/lib/council/types'
@@ -101,12 +94,11 @@ function UsageTable({
 }
 export function CouncilPanel({
   onBusyChange,
+  startEmpty = false,
 }: {
+  startEmpty?: boolean
   onBusyChange: (busy: boolean) => void
 }) {
-  const [config, setConfig] = useState(() =>
-    structuredClone(DEFAULT_COUNCIL_CONFIG),
-  )
   const [catalog, setCatalog] = useState<CatalogModel[]>([])
   const [prompt, setPrompt] = useState('')
   const [run, setRun] = useState<CouncilRun | null>(null)
@@ -122,12 +114,11 @@ export function CouncilPanel({
   }, [busy, onBusyChange])
   useEffect(() => {
     let active = true
-    Promise.all([loadConfig(), loadRuns()])
-      .then(([c, r]) => {
+    loadRuns()
+      .then((r) => {
         if (active) {
-          setConfig(c)
           setHistory(r)
-          if (r[0]) setRun(restoreRun(r[0]))
+          if (r[0] && !startEmpty) setRun(restoreRun(r[0]))
           setReady(true)
         }
       })
@@ -146,7 +137,7 @@ export function CouncilPanel({
       active = false
       engine.current?.stop()
     }
-  }, [])
+  }, [startEmpty])
   const update = (r: CouncilRun) => {
     setRun(r)
     if (r.status !== 'running')
@@ -186,13 +177,25 @@ export function CouncilPanel({
     setError('')
     setPauseQueued(false)
     try {
-      const target = action === 'new' ? createRun(prompt, config) : run
+      const target =
+        action === 'new' ? createRun(prompt, await loadConfig()) : run
+      if (
+        target &&
+        action === 'new' &&
+        run?.status === 'complete' &&
+        final?.text
+      ) {
+        target.conversationContext = [
+          ...(run.conversationContext ?? []),
+          { question: run.originalPrompt, answer: final.text },
+        ]
+      }
       if (!target) return
       const instance = await getEngine(target)
       if (action === 'new') {
-        await saveConfig(config)
         await saveRun(target)
         setRun(target)
+        setPrompt('')
       }
       if (action === 'continue') await instance.continueWithSuccessful()
       else await instance.execute(memberId)
@@ -220,13 +223,13 @@ export function CouncilPanel({
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">Council</h1>
+            <h1 className="text-xl font-semibold">Chat</h1>
             <p className="text-muted-foreground text-sm">
-              Independent perspectives. Critical review. One considered answer.
+              Ask a question. Get one considered answer.
             </p>
           </div>
           <label className="text-sm">
-            Saved runs{' '}
+            Chat history{' '}
             <select
               aria-label="Saved council runs"
               className="bg-background ml-2 max-w-64 rounded border p-2"
@@ -244,7 +247,7 @@ export function CouncilPanel({
                 }
               }}
             >
-              <option value="">New run</option>
+              <option value="">New chat</option>
               {history.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.originalPrompt.slice(0, 65)}
@@ -253,145 +256,39 @@ export function CouncilPanel({
             </select>
           </label>
         </div>
-        <details className="rounded-lg border p-3">
-          <summary className="cursor-pointer font-medium">
-            Council settings · {config.revisionRounds} revision round(s) ·{' '}
-            {callCount(config.revisionRounds)} planned calls
-          </summary>
-          <fieldset disabled={busy} className="mt-4 grid gap-3 md:grid-cols-2">
-            {config.members.map((member, i) => (
-              <label key={member.id} className="text-sm">
-                {member.label} model
-                <Input
-                  list={`council-models-${member.id}`}
-                  aria-label={`${member.label} council model`}
-                  value={member.model}
-                  onChange={(e) =>
-                    setConfig((c) => ({
-                      ...c,
-                      members: c.members.map((m, n) =>
-                        n === i ? { ...m, model: e.target.value } : m,
-                      ),
-                    }))
-                  }
-                />
-                <datalist id={`council-models-${member.id}`}>
-                  {catalog
-                    .filter((m) => m.id.startsWith(member.provider + '/'))
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                </datalist>
-              </label>
-            ))}
-            <label className="text-sm">
-              Chairman model
-              <Input
-                aria-label="Chairman model"
-                list="chairman-models"
-                value={config.chairmanModel}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, chairmanModel: e.target.value }))
-                }
-              />
-              <datalist id="chairman-models">
-                {catalog.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </datalist>
-            </label>
-            <label className="text-sm">
-              Revision rounds{' '}
-              <select
-                aria-label="Revision rounds"
-                className="bg-background ml-2 rounded border p-2"
-                value={config.revisionRounds}
-                onChange={(e) =>
-                  setConfig((c) => ({
-                    ...c,
-                    revisionRounds: Number(e.target.value),
-                  }))
-                }
-              >
-                {[0, 1, 2, 3].map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </select>
-            </label>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  void saveConfig(config)
-                    .then(() => setError('Settings saved.'))
-                    .catch(() => setError('Could not save settings.'))
-                }
-              >
-                Save settings
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  void loadCatalog()
-                    .then((c) => {
-                      setCatalog(c)
-                      setError('Models refreshed.')
-                    })
-                    .catch(() => setError('Could not load models.'))
-                }
-              >
-                Reload models
-              </Button>
-            </div>
-          </fieldset>
-          <p className="text-muted-foreground mt-3 text-xs">
-            Select a catalog suggestion or enter an exact OpenRouter ID.
-            Chairman can be any available model. Settings apply to new runs;
-            saved runs keep their configuration.
-          </p>
-        </details>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void execute('new')
-          }}
-          className="flex flex-col gap-3"
-        >
-          <label htmlFor="council-question" className="font-medium">
-            Your question
-          </label>
-          <textarea
-            id="council-question"
-            className="bg-background min-h-24 rounded-lg border p-3 text-sm"
-            placeholder="What difficult question should the council examine?"
-            maxLength={60000}
-            value={prompt}
-            disabled={busy}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={busy || !ready || !prompt.trim()}>
-              Start Council
-            </Button>
-            <span className="text-muted-foreground text-xs">
-              {callCount(config.revisionRounds)} model calls · billed to your
-              OpenRouter key
-            </span>
-          </div>
-        </form>
         {error && (
           <p role="status" className="text-sm">
             {error}
           </p>
         )}
+        {run?.conversationContext?.map((turn, i) => (
+          <div key={i} className="flex flex-col gap-3">
+            <p className="bg-muted self-end rounded-lg p-3 text-sm">
+              {turn.question}
+            </p>
+            <article className="rounded-lg border p-4">
+              <Answer text={turn.answer} />
+            </article>
+          </div>
+        ))}
         {run && (
           <>
-            <div className="rounded-lg border p-4">
-              <p className="mb-3 text-sm font-medium">{run.originalPrompt}</p>
+            <p className="bg-muted self-end rounded-lg p-3 text-sm">
+              {run.originalPrompt}
+            </p>
+            {busy && (
+              <p role="status" className="text-muted-foreground text-sm">
+                Thinking — comparing answers automatically…
+              </p>
+            )}
+            <details
+              open={run.status === 'error' || run.status === 'paused'}
+              className="rounded-lg border p-4"
+            >
+              <summary className="cursor-pointer text-sm">
+                Council progress and controls
+              </summary>
+
               <ol
                 aria-label="Council progress"
                 className="flex flex-wrap gap-3 text-sm"
@@ -491,97 +388,145 @@ export function CouncilPanel({
                       </Button>
                     </div>
                   ))}
-            </div>
+            </details>
             {final?.text && (
               <article className="bg-card rounded-xl border p-5">
                 <h2 className="mb-4 text-lg font-semibold">Final answer</h2>
                 <Answer text={final.text} />
               </article>
             )}
-            {busy && displayStep && displayStep.stage !== 'synthesis' && (
-              <Columns step={displayStep} run={run} />
-            )}
-            {(
-              ['revision', 'evaluation', 'critique', 'independent'] as const
-            ).map((stage) => {
-              const steps = run.steps.filter(
-                (s) => s.stage === stage && s.jobs.length,
-              )
-              return (
-                steps.length > 0 && (
-                  <details key={stage} className="rounded-lg border p-4">
-                    <summary className="cursor-pointer font-medium">
-                      {
-                        {
-                          revision: 'Revised answers',
-                          evaluation: 'Rankings',
-                          critique: 'Critiques',
-                          independent: 'Initial answers',
-                        }[stage]
-                      }
-                    </summary>
-                    <div className="mt-4 flex flex-col gap-4">
-                      {stage === 'evaluation' &&
-                        run.aggregateRanking.length > 0 && (
-                          <ol>
-                            {run.aggregateRanking.map((r) => (
-                              <li key={r.responseId}>
-                                Response {r.responseId} ·{' '}
-                                {
-                                  run.config.members.find(
-                                    (m) => m.id === r.memberId,
-                                  )?.label
-                                }{' '}
-                                · mean rank {r.meanRank.toFixed(2)}
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      {steps.map((s, i) => (
-                        <div key={i}>
-                          {s.round > 0 && (
-                            <h3 className="mb-2 text-sm">Round {s.round}</h3>
-                          )}
-                          <Columns step={s} run={run} />
-                        </div>
-                      ))}
-                    </div>
-                  </details>
+            <details className="rounded-lg border p-3">
+              <summary className="cursor-pointer text-sm">
+                Inspect answers, rankings and usage
+              </summary>
+              {busy && displayStep && displayStep.stage !== 'synthesis' && (
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    Live model answers
+                  </summary>
+                  <Columns step={displayStep} run={run} />
+                </details>
+              )}
+              {(
+                ['revision', 'evaluation', 'critique', 'independent'] as const
+              ).map((stage) => {
+                const steps = run.steps.filter(
+                  (s) => s.stage === stage && s.jobs.length,
                 )
-              )
-            })}
-            <details className="rounded-lg border p-4">
-              <summary className="cursor-pointer font-medium">
-                Usage · ${cost.toFixed(4)}
-                {attempts.some((j) => j.usage?.cost == null)
-                  ? ' + unknown'
-                  : ''}{' '}
-                · {(run.durationMs / 1000).toFixed(1)}s active time
-              </summary>
-              <p className="text-muted-foreground my-3 text-xs">
-                Reported usage where available; otherwise catalog pricing
-                estimates. Interrupted calls may incur additional charges not
-                reported here. OpenRouter billing is authoritative.
-              </p>
-              <UsageTable jobs={jobs} group={(j) => j.model} />
-              <UsageTable
-                jobs={jobs}
-                group={(j) => {
-                  const s = run.steps.find((s) => s.jobs.includes(j))!
-                  return `${s.stage} ${s.round || ''}`
-                }}
-              />
-            </details>
-            <details className="rounded-lg border p-4">
-              <summary className="cursor-pointer font-medium">
-                Raw execution details
-              </summary>
-              <pre className="mt-3 max-h-96 overflow-auto text-xs break-all whitespace-pre-wrap">
-                {JSON.stringify(run, null, 2)}
-              </pre>
+                return (
+                  steps.length > 0 && (
+                    <details key={stage} className="rounded-lg border p-4">
+                      <summary className="cursor-pointer font-medium">
+                        {
+                          {
+                            revision: 'Revised answers',
+                            evaluation: 'Rankings',
+                            critique: 'Critiques',
+                            independent: 'Initial answers',
+                          }[stage]
+                        }
+                      </summary>
+                      <div className="mt-4 flex flex-col gap-4">
+                        {stage === 'evaluation' &&
+                          run.aggregateRanking.length > 0 && (
+                            <ol>
+                              {run.aggregateRanking.map((r) => (
+                                <li key={r.responseId}>
+                                  Response {r.responseId} ·{' '}
+                                  {
+                                    run.config.members.find(
+                                      (m) => m.id === r.memberId,
+                                    )?.label
+                                  }{' '}
+                                  · mean rank {r.meanRank.toFixed(2)}
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        {steps.map((s, i) => (
+                          <div key={i}>
+                            {s.round > 0 && (
+                              <h3 className="mb-2 text-sm">Round {s.round}</h3>
+                            )}
+                            <Columns step={s} run={run} />
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                )
+              })}
+              <details className="rounded-lg border p-4">
+                <summary className="cursor-pointer font-medium">
+                  Usage · ${cost.toFixed(4)}
+                  {attempts.some((j) => j.usage?.cost == null)
+                    ? ' + unknown'
+                    : ''}{' '}
+                  · {(run.durationMs / 1000).toFixed(1)}s active time
+                </summary>
+                <p className="text-muted-foreground my-3 text-xs">
+                  Reported usage where available; otherwise catalog pricing
+                  estimates. Interrupted calls may incur additional charges not
+                  reported here. OpenRouter billing is authoritative.
+                </p>
+                <UsageTable jobs={jobs} group={(j) => j.model} />
+                <UsageTable
+                  jobs={jobs}
+                  group={(j) => {
+                    const s = run.steps.find((s) => s.jobs.includes(j))!
+                    return `${s.stage} ${s.round || ''}`
+                  }}
+                />
+              </details>
+              <details className="rounded-lg border p-4">
+                <summary className="cursor-pointer font-medium">
+                  Raw execution details
+                </summary>
+                <pre className="mt-3 max-h-96 overflow-auto text-xs break-all whitespace-pre-wrap">
+                  {JSON.stringify(run, null, 2)}
+                </pre>
+              </details>
             </details>
           </>
         )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void execute('new')
+          }}
+          className="bg-background sticky bottom-0 flex flex-col gap-3 border-t py-3"
+        >
+          <label htmlFor="council-question" className="font-medium">
+            Message
+          </label>
+          <textarea
+            id="council-question"
+            className="bg-background min-h-24 rounded-lg border p-3 text-sm"
+            placeholder="Ask anything…"
+            maxLength={60000}
+            value={prompt}
+            disabled={busy}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === 'Enter' &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
+                e.preventDefault()
+                if (prompt.trim() && !busy && ready) void execute('new')
+              }
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={busy || !ready || !prompt.trim()}>
+              Send
+            </Button>
+            <span className="text-muted-foreground text-xs">
+              Automatic council · model options in Settings
+            </span>
+          </div>
+        </form>
       </div>
     </section>
   )

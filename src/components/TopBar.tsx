@@ -15,9 +15,16 @@ import { useAppStore } from '@/lib/store'
 interface TopBarProps {
   onNewConversation: () => void
   onSearchOpen?: () => void
+  compareTools?: boolean
+  busy?: boolean
 }
 
-export function TopBar({ onNewConversation, onSearchOpen }: TopBarProps) {
+export function TopBar({
+  onNewConversation,
+  onSearchOpen,
+  compareTools = true,
+  busy = false,
+}: TopBarProps) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
 
   return (
@@ -25,15 +32,17 @@ export function TopBar({ onNewConversation, onSearchOpen }: TopBarProps) {
       className="border-border bg-background flex h-12 shrink-0 items-center gap-1 border-b px-2 sm:gap-2 sm:px-4"
       role="banner"
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleSidebar}
-        aria-label="Toggle sidebar"
-        className="h-10 w-10 sm:h-8 sm:w-8"
-      >
-        <MenuIcon className="h-4 w-4" />
-      </Button>
+      {compareTools && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          aria-label="Toggle sidebar"
+          className="h-10 w-10 sm:h-8 sm:w-8"
+        >
+          <MenuIcon className="h-4 w-4" />
+        </Button>
+      )}
 
       <h1 className="text-foreground text-lg font-semibold tracking-tight">
         Quorum
@@ -41,7 +50,7 @@ export function TopBar({ onNewConversation, onSearchOpen }: TopBarProps) {
 
       <div className="flex-1" />
 
-      {onSearchOpen && (
+      {compareTools && onSearchOpen && (
         <Button
           variant="ghost"
           size="icon"
@@ -54,15 +63,16 @@ export function TopBar({ onNewConversation, onSearchOpen }: TopBarProps) {
         </Button>
       )}
 
-      <ExportMenu />
+      {compareTools && <ExportMenu />}
 
-      <UsageSummary />
+      {compareTools && <UsageSummary />}
 
       <SettingsDialog />
 
       <Button
         variant="ghost"
         size="icon"
+        disabled={busy}
         onClick={onNewConversation}
         aria-label="New conversation"
         title={`New conversation (${/(Mac|iPhone|iPad)/.test(navigator.userAgent) ? '⌘' : 'Ctrl+'}N)`}

@@ -59,7 +59,7 @@ export async function onRequestPost({
         const result = streamText({
           model: provider(model),
           prompt: messages[0].content,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 16384,
           maxRetries: 0,
           onError: () => {},
           abortSignal: signal,

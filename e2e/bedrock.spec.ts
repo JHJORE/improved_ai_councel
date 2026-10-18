@@ -17,7 +17,7 @@ test('Bedrock key-only chat runs the whole Council without OpenRouter completion
       'Bearer fake-bedrock-key',
     )
     expect(body.region).toBe('us-east-1')
-    expect(body.model).toMatch(/^us\.(anthropic|amazon|meta)\./)
+    expect(body.model).toMatch(/^us\.(anthropic|openai|xai)\./)
     calls++
     const prompt = body.messages[0].content
     const text = prompt.includes('Evaluate each candidate')

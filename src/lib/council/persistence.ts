@@ -1,6 +1,9 @@
 import { db } from '@/lib/db'
 import type { CouncilRun, CouncilConfig } from '@/lib/council/types'
-import { DEFAULT_COUNCIL_CONFIG } from '@/lib/council/config'
+import {
+  DEFAULT_COUNCIL_CONFIG,
+  upgradeBedrockPreset,
+} from '@/lib/council/config'
 export async function saveRun(run: CouncilRun) {
   await db.councilRuns.put(run)
 }
@@ -8,9 +11,9 @@ export async function loadRuns() {
   return db.councilRuns.orderBy('createdAt').reverse().toArray()
 }
 export async function loadConfig(): Promise<CouncilConfig> {
-  return (
+  return upgradeBedrockPreset(
     (await db.councilPreferences.get('config'))?.config ??
-    structuredClone(DEFAULT_COUNCIL_CONFIG)
+      structuredClone(DEFAULT_COUNCIL_CONFIG),
   )
 }
 export async function saveConfig(config: CouncilConfig) {

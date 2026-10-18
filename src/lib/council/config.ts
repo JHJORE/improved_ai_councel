@@ -58,21 +58,42 @@ export const BEDROCK_COUNCIL_CONFIG: CouncilConfig = {
       id: 'claude',
       provider: 'anthropic',
       label: 'Claude',
-      model: 'us.anthropic.claude-sonnet-4-6',
+      model: 'us.anthropic.claude-opus-5-5',
     },
     {
-      id: 'nova',
-      provider: 'amazon',
-      label: 'Nova',
-      model: 'us.amazon.nova-2-lite-v1:0',
+      id: 'gpt',
+      provider: 'openai',
+      label: 'GPT',
+      model: 'us.openai.gpt-6.1-sol',
     },
     {
-      id: 'llama',
-      provider: 'meta',
-      label: 'Llama',
-      model: 'us.meta.llama3-3-70b-instruct-v1:0',
+      id: 'grok',
+      provider: 'xai',
+      label: 'Grok',
+      model: 'us.xai.grok-4.7',
     },
   ],
-  chairmanModel: 'us.anthropic.claude-sonnet-4-6',
+  chairmanModel: 'us.anthropic.claude-opus-5-5',
   revisionRounds: 1,
+}
+
+/** Upgrade only the exact starter preset; preserve user choices and run snapshots. */
+export function upgradeBedrockPreset(config: CouncilConfig): CouncilConfig {
+  const oldModels = [
+    'us.anthropic.claude-sonnet-4-6',
+    'us.amazon.nova-2-lite-v1:0',
+    'us.meta.llama3-3-70b-instruct-v1:0',
+  ]
+  if (
+    config.backend !== 'bedrock' ||
+    config.chairmanModel !== oldModels[0] ||
+    config.members.length !== 3 ||
+    !config.members.every((m, i) => m.model === oldModels[i])
+  )
+    return config
+  return {
+    ...config,
+    members: structuredClone(BEDROCK_COUNCIL_CONFIG.members),
+    chairmanModel: BEDROCK_COUNCIL_CONFIG.chairmanModel,
+  }
 }

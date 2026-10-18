@@ -72,3 +72,33 @@ it('reports HTTP error without including response secrets', async () => {
     'OpenRouter request failed (401)',
   )
 })
+it('routes Bedrock through the local proxy with bearer auth and unknown cost', async () => {
+  const fetcher = vi.fn(
+    async () =>
+      new Response(
+        event({ choices: [{ delta: { content: 'AWS answer' } }] }) +
+          event({
+            choices: [{ finish_reason: 'stop' }],
+            usage: { prompt_tokens: 12, completion_tokens: 3 },
+          }) +
+          event('[DONE]'),
+      ),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const result = await createModelCall('fake-bedrock-key', [], {
+    region: 'us-east-1',
+  })({ ...request, model: 'us.anthropic.claude-sonnet-4-6' })
+  expect(fetcher.mock.calls[0]).toEqual([
+    '/api/bedrock',
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        Authorization: 'Bearer fake-bedrock-key',
+      }),
+      body: expect.stringContaining('"region":"us-east-1"'),
+    }),
+  ])
+  expect(result).toEqual({
+    text: 'AWS answer',
+    usage: { input: 12, output: 3, cost: null },
+  })
+})

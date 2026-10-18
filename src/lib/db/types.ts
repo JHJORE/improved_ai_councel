@@ -115,6 +115,7 @@ export interface AddMessageInput {
 
 /** Per-provider API key storage. */
 export interface ApiKeys {
+  bedrock?: string
   claude: string
   chatgpt: string
   gemini: string

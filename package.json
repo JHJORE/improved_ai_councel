@@ -18,6 +18,7 @@
     "typecheck": "tsc -b && npm run typecheck:functions"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^3.0.140",
     "@ai-sdk/react": "^3.0.107",
     "ai": "^6.0.105",
     "class-variance-authority": "^0.7.1",

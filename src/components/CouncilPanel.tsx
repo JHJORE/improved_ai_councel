@@ -125,14 +125,6 @@ export function CouncilPanel({
       .catch(() => {
         if (active) setError('Could not load local Council storage.')
       })
-    loadCatalog()
-      .then((c) => {
-        if (active) setCatalog(c)
-      })
-      .catch(() => {
-        if (active)
-          setError('Model catalog unavailable. Reload models before starting.')
-      })
     return () => {
       active = false
       engine.current?.stop()
@@ -145,23 +137,37 @@ export function CouncilPanel({
   }
   async function getEngine(target: CouncilRun) {
     const settings = await getSettings()
-    if (!settings.apiKeys.openrouter.trim())
+    const isBedrock = target.config.backend === 'bedrock'
+    const apiKey = isBedrock
+      ? settings.apiKeys.bedrock
+      : settings.apiKeys.openrouter
+    if (!apiKey?.trim())
       throw new Error(
-        'Enter your OpenRouter API key in Settings (gear icon) first.',
+        `Enter your ${isBedrock ? 'AWS Bedrock' : 'OpenRouter'} API key in Settings first.`,
       )
-    const models = catalog.length ? catalog : await loadCatalog()
-    if (!catalog.length) setCatalog(models)
-    for (const id of [
-      ...target.config.members.map((m) => m.model),
-      target.config.chairmanModel,
-    ])
-      if (!models.some((m) => m.id === id))
-        throw new Error(
-          `Model ${id} is not in the current OpenRouter catalog. Select an available model.`,
-        )
+    const models = isBedrock
+      ? []
+      : catalog.length
+        ? catalog
+        : await loadCatalog()
+    if (!isBedrock) {
+      if (!catalog.length) setCatalog(models)
+      for (const id of [
+        ...target.config.members.map((m) => m.model),
+        target.config.chairmanModel,
+      ])
+        if (!models.some((m) => m.id === id))
+          throw new Error(
+            `Model ${id} is unavailable. Select an available model in Settings.`,
+          )
+    }
     const instance = new CouncilOrchestrator(
       target,
-      createModelCall(settings.apiKeys.openrouter, models),
+      createModelCall(
+        apiKey,
+        models,
+        isBedrock ? { region: target.config.region! } : undefined,
+      ),
       saveRun,
       update,
     )

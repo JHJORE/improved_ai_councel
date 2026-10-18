@@ -58,7 +58,9 @@ export function evaluationSchema(ids: string[]) {
 export function createModelCall(
   apiKey: string,
   catalog: CatalogModel[],
+  bedrock?: { region: string },
 ): ModelCall {
+  const provider = bedrock ? 'AWS Bedrock' : 'OpenRouter'
   return async ({ model, prompt, evaluationIds, signal, onText }) => {
     if (prompt.length > 300000)
       throw new Error(
@@ -66,7 +68,9 @@ export function createModelCall(
       )
     const info = catalog.find((m) => m.id === model)
     const response = await fetch(
-      'https://openrouter.ai/api/v1/chat/completions',
+      bedrock
+        ? '/api/bedrock'
+        : 'https://openrouter.ai/api/v1/chat/completions',
       {
         method: 'POST',
         headers: {
@@ -75,6 +79,7 @@ export function createModelCall(
         },
         signal: AbortSignal.any([signal, AbortSignal.timeout(300000)]),
         body: JSON.stringify({
+          ...(bedrock ? { region: bedrock.region } : {}),
           model,
           messages: [{ role: 'user', content: prompt }],
           stream: true,
@@ -89,7 +94,7 @@ export function createModelCall(
     )
     if (!response.ok || !response.body)
       throw new Error(
-        `OpenRouter request failed (${response.status}). Check your key, credits and model access; then retry.`,
+        `${provider} request failed (${response.status}). Check your key, region, model access and quota in Settings; then retry.`,
       )
     const reader = response.body.getReader(),
       decoder = new TextDecoder()
@@ -109,7 +114,7 @@ export function createModelCall(
       const data = JSON.parse(payload)
       if (data.error)
         throw new Error(
-          'OpenRouter reported a streaming error. Retry this request.',
+          `${provider} could not complete the request. Check model access, region and quota, then retry.`,
         )
       const choice = data.choices?.[0]
       if (choice?.finish_reason === 'length')

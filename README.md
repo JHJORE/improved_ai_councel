@@ -17,6 +17,14 @@ Open the local URL printed by Vite (normally http://127.0.0.1:5173). No Cloudfla
 
 Click the **gear icon → OpenRouter API Key** and enter your key. The key is saved in this browser's IndexedDB. Chat opens by default. Type a question and press **Enter** (or **Send**) to get the final answer automatically. Use Shift+Enter for a new line. Follow-up messages include your previous questions and answers; **New conversation** starts fresh. Compare and Cross-feed retain Quorum's existing conversation storage, model controls, exports, and manual Cross-feed button.
 
+## AWS Bedrock
+
+Open **Settings → Chat provider → AWS Bedrock**, paste a Bedrock bearer API key, and select your AWS region. Then close Settings and chat normally. You do not need an OpenRouter key for Bedrock Council chats. Keys save immediately in this browser's local IndexedDB and are sent only to the local proxy and AWS; they are excluded from run exports.
+
+The defaults use US inference profiles for Claude Sonnet 4.6, Amazon Nova 2 Lite, and Llama 3.3 70B, with Claude as chairman. Your account must have access to these models in the selected region. Model fields accept Bedrock IDs or inference profile ARNs; change them to match your account, especially outside US regions. This uses a Bedrock **bearer API key**, not an IAM access-key ID/secret pair. See [AWS key documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-use.html).
+
+Bedrock streams through `/api/bedrock` using ConverseStream. `npm run dev` starts the required local proxy automatically. A static-only host or `npm run preview` does not provide this proxy. Token counts are shown; dollar costs are marked unknown because Bedrock does not return per-request billing. Runs retain their backend and region when resumed. The optional legacy Compare and Cross-feed modes still use OpenRouter.
+
 ## Council Mode
 
 ```text
@@ -69,7 +77,7 @@ Each stage sends only its relevant context. Individual sections over 60,000 char
 
 ### Privacy and limitations
 
-Keys stay in browser settings and request headers (or the local Compare proxy request). They are never stored in Council runs, exported, or logged. `.env`, `.env.local` and other environment files are ignored. Council content goes only to OpenRouter and its model providers. Model-provided images are displayed as text placeholders to prevent unsolicited third-party image requests. Local browser data is not encrypted and clearing site data removes it; export important runs. Use the same localhost URL/port to retain access to browser storage.
+Keys stay in browser settings and request headers (or the local Compare proxy request). They are never stored in Council runs, exported, or logged. `.env`, `.env.local` and other environment files are ignored. OpenRouter Council content goes to OpenRouter and its model providers; Bedrock Council content goes through the local proxy to AWS. Model-provided images are displayed as text placeholders to prevent unsolicited third-party image requests. Local browser data is not encrypted and clearing site data removes it; export important runs. Use the same localhost URL/port to retain access to browser storage.
 
 Anonymous labels hide configured provider identities, and common self-identification is redacted in peer prompts. Writing style and content can still reveal authorship; anonymity is best effort. Identity redaction also affects provider names in questions about AI companies; inspect raw prompts for such questions. Prompt-injection resistance is advisory, not a security guarantee. Model rankings are opinions, not external fact verification. This release has no browsing/retrieval tools or Chairman Council.
 

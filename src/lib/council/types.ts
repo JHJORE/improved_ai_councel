@@ -11,6 +11,8 @@ export interface Member {
   label: string
 }
 export interface CouncilConfig {
+  backend?: 'openrouter' | 'bedrock'
+  region?: string
   members: Member[]
   chairmanModel: string
   revisionRounds: number

@@ -88,7 +88,7 @@ describe('SettingsDialog', () => {
 
       expect(screen.getByText('Settings')).toBeInTheDocument()
       expect(
-        screen.getByText(/One API key for all providers/),
+        screen.getByText(/Choose your chat provider below/),
       ).toBeInTheDocument()
     })
 

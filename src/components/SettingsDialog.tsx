@@ -47,7 +47,9 @@ export function SettingsDialog() {
   const settings = useLiveQuery(() => db.settings.get(1), [])
 
   // Check if this is first run (no OpenRouter API key configured)
-  const hasApiKey = settings != null && settings.apiKeys.openrouter !== ''
+  const hasApiKey =
+    settings != null &&
+    Boolean(settings.apiKeys.openrouter || settings.apiKeys.bedrock)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -68,7 +70,7 @@ export function SettingsDialog() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            One API key for all providers. Get yours at{' '}
+            Choose your chat provider below. For OpenRouter, get a key at{' '}
             <a
               href="https://openrouter.ai/keys"
               target="_blank"
@@ -82,10 +84,10 @@ export function SettingsDialog() {
         </DialogHeader>
 
         <div className="flex flex-col gap-6 pt-2">
+          <CouncilSettings />
           {/* OpenRouter API key (single key for all providers) */}
           <OpenRouterKeySection apiKey={settings?.apiKeys.openrouter ?? ''} />
 
-          <CouncilSettings />
           {/* Separator */}
           <div className="border-border border-t" />
 
